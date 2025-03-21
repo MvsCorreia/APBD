@@ -1,0 +1,30 @@
+use bd2025;
+
+
+/* 18) Mostre os nomes, salários, bairros e zonas de todos os funcionários demitidos. */
+select funcodigo codigo,funnome funcionario, funsalario salario, bainome bairro, zonnome zona 
+from funcionario 
+inner join bairro on baicodigo = funbaicodigo
+inner join zona on zoncodigo = baizoncodigo
+where fundtdem is null
+order by funcodigo;
+
+update funcionario
+set fundtdem = '2025-03-21'
+where funcodigo in (1,2);
+
+select ger.funcodigo, ger.funnome, count(sub.funcodigo)
+from funcionario ger
+inner join funcionario sub on ger.funcodigo = sub.funcodgerente
+group by ger.funcodigo, ger.funnome
+having count(sub.funcodigo) > 6
+order by ger.funcodigo;
+
+
+select * from bairro;
+select * from bairro
+left outer join cliente on baicodigo = clibaicodigo;
+
+select * from produto
+left outer join itemvenda on procodigo = itvprocodigo
+where itvvencodigo is null;
