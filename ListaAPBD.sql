@@ -39,6 +39,13 @@ where proativo = 1 and prosaldo > 5
 and estdescricao = 'casado' and clisexo = 'm'
 order by pronome;
 
+/* 18) Mostre os nomes, salários, bairros e zonas de todos os funcionários demitidos. */
+select funnome funcionario, funsalario salario, bainome bairro, zonnome zona 
+from funcionario 
+inner join bairro on baicodigo = funbaicodigo
+inner join zona on zoncodigo = baizoncodigo
+where fundtdem is null;
+
 /* 27) Mostre os totais dos salários por zona, de todos os funcionários. */ 
 
 select zonnome zona, sum(funsalario) salario 
