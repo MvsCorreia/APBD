@@ -1,0 +1,140 @@
+/*
+	left(p1, p2 int) 
+	right(p1, p2 int)
+    substring(p1) - p1 = posição inicial
+    substring(p1, p2) - p1 = posição inicial, p2 = qtd caracteres
+    length(p1) retorna o tamanho
+    locate(p1, p2) retorna posição da primeira ocorrencia
+    reverse(p1) retorna o dado invertido
+    concat(p1, p2, ..., pn) retorna a concatenação 
+*/
+
+
+/* 
+33) Mostre o primeiro nome dos funcionários que não geraram vendas. 
+*/
+
+select funnome name, 
+	left(funnome, locate(' ', funnome) - 1) firstname,
+	right(funnome, locate(' ', reverse(funnome))) lastname,
+    substring(funnome, locate(' ', funnome) + 1, lenglength(right(funnome, locate(' ', reverse(funnome))) - 1))
+from funcionario
+left outer join venda on venfuncodigo = funcodigo 
+where vencodigo is null;
+
+/* STORED PROCEDURE */
+
+select bainome, clinome from cliente
+inner join bairro on baicodigo = clibaicodigo
+where bainome = 'centro';
+
+delimiter $$
+create procedure sp_clientes_por_bairro(p_bairro varchar(30))
+begin 
+	select bainome, clinome from cliente
+	inner join bairro on baicodigo = clibaicodigo
+	where bainome = p_bairro;
+end$$
+delimiter ;
+
+call sp_clientes_por_bairro('cachoeirinha');
+
+select bainome, clinome, clisexo, estdescricao from cliente
+inner join bairro on baicodigo = clibaicodigo
+inner join estadocivil on estcodigo = cliestcodigo
+where bainome = 'centro' and clisexo = 'f' and estdescricao = 'solteiro';
+
+desc estadocivil;
+
+delimiter $$
+create procedure sp_clientes_por_bairro_sexo_estadocivil(p_bairro varchar(30), 
+														 p_sexo char(1),
+                                                         p_estcivil varchar(40))
+begin 
+	select bainome, clinome, clisexo, estdescricao from cliente
+	inner join bairro on baicodigo = clibaicodigo
+	inner join estadocivil on estcodigo = cliestcodigo
+	where bainome = p_bairro and clisexo = p_sexo and estdescricao = p_estcivil;
+end$$
+delimiter ;
+
+call sp_clientes_por_bairro_sexo_estadocivil('centro', 'f', 'casado');
+
+
+drop procedure sp_clientes_bairro_sexo_estadocivil_val;
+delimiter $$
+create procedure sp_clientes_bairro_sexo_estadocivil_val(p_bairro varchar(30), 
+														 p_sexo char(1),
+                                                         p_estcivil varchar(40))
+begin 
+	declare v_existe_bairro boolean default false;
+    set v_existe_bairro = (select count(*) from bairro 
+							where bainome = p_bairro);
+	if v_existe_bairro then
+		select bainome, clinome, clisexo, estdescricao from cliente
+		inner join bairro on baicodigo = clibaicodigo
+		inner join estadocivil on estcodigo = cliestcodigo
+		where bainome = p_bairro and clisexo = p_sexo and estdescricao = p_estcivil;
+	else
+		select concat('O bairro ', p_bairro, ' nao existe.') resposta;
+	end if;
+end$$
+delimiter ;
+
+call sp_clientes_bairro_sexo_estadocivil_val('cetro', 'f', 'casado');
+
+
+
+
+select * from cliente
+inner join venda on venclicodigo = clicodigo
+inner join funcionario on funcodigo = venfuncodigo
+where fundtdem is not null and clirendamensal > 1200 and clirendamensal < 1400 and clisexo = 'f';
+
+
+desc cliente;
+drop procedure sp_cliente_sexo_renda1_renda2;
+delimiter $$
+create procedure sp_cliente_sexo_renda1_renda2(p_sexo char(1),
+											   p_renda1 double(6,2),
+                                               p_renda2 double(6,2))
+begin 
+	if p_renda1 >= 800 and p_renda2 >= 800 then
+		select clinome cliente,
+			   clirendamensal renda,
+               funnome funcionario,
+               fundtdem demissao 
+		from cliente
+        
+		inner join venda on venclicodigo = clicodigo
+		inner join funcionario on funcodigo = venfuncodigo
+        
+		where fundtdem is not null 
+				and clirendamensal > p_renda1 
+				and clirendamensal < p_renda2
+				and clisexo = p_sexo;
+	else 
+		select concat('Uma das rendas informadas é menor que 800 reais') resposta;
+	end if;
+end$$
+delimiter ;
+
+call sp_cliente_sexo_renda1_renda2('m',1000,1300);
+
+select clinome, clirendamensal from cliente
+where clirendamensal = (select max(clirendamensal) from cliente);
+
+select min(clirendamensal) from (select distinct clirendamensal from cliente
+				order by clirendamensal desc
+				limit 3) as resp1;
+
+select clinome, clirendamensal from cliente 
+where clirendamensal >= (select min(renda) 
+						 from (select distinct clirendamensal renda from cliente
+								order by clirendamensal desc
+								limit 3) as resp1)
+order by clirendamensal desc;
+                         
+
+		
+
