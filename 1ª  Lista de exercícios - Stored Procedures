@@ -1,0 +1,163 @@
+/* 1ª  Lista de exercícios - Stored Procedures*/
+/* Marcus Vinicius Soares Correia*/
+
+/* 
+1) Crie (em uma única stored procedures) opções para inserção, atualização e deleção de clientes.
+Defina os parâmetros de forma adequada para cada operação, e valide os campos que são chaves
+estrangeiras, fazendo os devidos tratamentos e envio de mensagens de erros.
+*/
+
+/*
+2) Mostre o total de vendas por sexo de clientes e forma de pagamento.
+*/
+
+desc cliente;
+desc formapagamento;
+
+select count(*)
+from venda 
+
+inner join formapagamento on fpcodigo = venfpcodigo
+inner join cliente on clicodigo = venclicodigo
+
+where clisexo = 'm' and fpdescricao = 'pix';
+
+drop procedure sp_vendas_sexo_pagamento;
+delimiter $$
+create procedure sp_vendas_sexo_pagamento(p_sexo char(1), p_fpagamento varchar(60))
+begin 
+	declare aux int;
+	if p_sexo not in ('m','f') then
+		select concat('Sexo "', p_sexo,'" inválido') resposta;
+	else 
+		select count(*) into aux from formapagamento 
+        where fpdescricao = p_fpagamento;
+        
+        if aux = 0 then
+			select concat('Forma de pagamento "', p_fpagamento,'" inválida') resposta;
+		else
+			select count(*) 'Total de vendas'
+			from venda 
+			
+			inner join formapagamento on fpcodigo = venfpcodigo
+			inner join cliente on clicodigo = venclicodigo
+			
+			where clisexo = p_sexo and fpdescricao = p_fpagamento;
+		end if;
+	end if;
+	
+end$$
+delimiter ;
+
+call sp_vendas_sexo_pagamento('f','dinheiro');
+
+/*
+3) Mostre o nome e saldo do(s) produto(s) mais vendido de um determinado grupo de produtos.
+*/
+
+-- Numero de vendas por grupo
+select sum(itvqtde) 
+from produto
+inner join itemvenda on  itvprocodigo = procodigo
+inner join grupoproduto on grpcodigo = progrpcodigo
+where grpdescricao = 'foto'
+group by pronome;
+
+-- Maior numero de vendas
+select max(maior)
+from (select sum(itvqtde) as maior
+		from produto
+		inner join itemvenda on  itvprocodigo = procodigo
+		inner join grupoproduto on grpcodigo = progrpcodigo
+		where grpdescricao = 'foto'
+		group by pronome
+) quantidade;
+
+select pronome, prosaldo 
+from produto
+inner join itemvenda on  itvprocodigo = procodigo
+inner join grupoproduto on grpcodigo = progrpcodigo
+where grpdescricao = 'foto'
+group by pronome, prosaldo
+having sum(itvqtde) = (select max(maior)
+						from (
+							select sum(itv.itvqtde) as maior 
+                            from produto pro
+                            inner join itemvenda itv on itv.itvprocodigo = pro.procodigo
+                            inner join grupoproduto grp on grp.grpcodigo = pro.progrpcodigo
+                            where grp.grpdescricao = 'foto'
+                            group by pro.pronome
+                            ) vendas
+);
+
+desc grupoproduto;
+
+drop procedure sp_saldo_produtos_mais_vendidos_grupo;
+delimiter $$
+create procedure sp_saldo_produtos_mais_vendidos_grupo(p_grupo varchar(40))
+begin 
+	declare aux int;
+    
+    select count(*) into aux 
+    from grupoproduto
+    where grpdescricao = p_grupo;
+    
+    if aux = 0 then
+		select concat('Grupo "', p_grupo, '" invalido') resposta;
+	else
+		select pronome, prosaldo 
+		from produto
+		inner join itemvenda on  itvprocodigo = procodigo
+		inner join grupoproduto on grpcodigo = progrpcodigo
+		where grpdescricao = p_grupo
+		group by pronome, prosaldo
+		having sum(itvqtde) = (select max(maior)
+								from (
+									select sum(itv.itvqtde) as maior 
+									from produto pro
+									inner join itemvenda itv on itv.itvprocodigo = pro.procodigo
+									inner join grupoproduto grp on grp.grpcodigo = pro.progrpcodigo
+									where grp.grpdescricao = p_grupo
+									group by pro.pronome
+									) vendas);
+	end if;
+	
+end$$
+delimiter ;
+
+call sp_saldo_produtos_mais_vendidos_grupo('fot');
+
+/*
+4) Mostre o nome e saldo do(s) produto(s) menos vendido para clientes de um determinado sexo e
+de um estado civil.
+*/
+
+/*
+5) Mostre os nomes dos clientes que tenham gerado mais de uma venda e que tenham os nomes
+iniciando com determinada letra.
+*/
+
+/*
+6) Mostre a maior renda de cliente para uma zona.
+*/
+
+/*
+7) Para cada cliente, mostre seu nome e a data da primeira venda realizada.
+*/
+
+/*
+8) Mostre os nomes e custos dos produtos ativos dos grupos informática ou foto, mostrando em
+primeiro lugar os com maior valor.
+*/
+
+/*
+9) Mostre os nomes dos funcionários não demitidos que venderam produtos para clientes da zona leste
+ou oeste.
+*/
+
+/*
+10) Mostre quantos produtos dos grupos "informática" e "eletroeletrônico" foram vendidos para
+clientes do sexo masculino, casadas ou divorciadas e da zona norte;
+*/
+
+
