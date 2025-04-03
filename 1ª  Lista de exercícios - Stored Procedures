@@ -132,15 +132,194 @@ call sp_saldo_produtos_mais_vendidos_grupo('fot');
 de um estado civil.
 */
 
+-- Total de venda dos produtos por sexo e estado civil
+select pronome ,sum(itvqtde) as menor
+from produto
+inner join itemvenda on  itvprocodigo = procodigo
+inner join venda on vencodigo = itvvencodigo
+inner join cliente on clicodigo = venclicodigo
+inner join estadocivil on estcodigo = cliestcodigo
+where estdescricao = 'casado' and clisexo = 'f'
+group by pronome;
+
+-- Menor numero de vendas
+select min(menor)
+from (select sum(itvqtde) as menor
+		from produto
+		inner join itemvenda on  itvprocodigo = procodigo
+		inner join venda on vencodigo = itvvencodigo
+		inner join cliente on clicodigo = venclicodigo
+		inner join estadocivil on estcodigo = cliestcodigo
+		where estdescricao = 'casado' and clisexo = 'm'
+		group by pronome
+) menor;
+
+select pronome, prosaldo 
+from produto
+inner join itemvenda on  itvprocodigo = procodigo
+inner join venda on vencodigo = itvvencodigo
+inner join cliente on clicodigo = venclicodigo
+inner join estadocivil on estcodigo = cliestcodigo
+where estdescricao = 'casado' and clisexo = 'f'
+group by pronome, prosaldo
+having sum(itvqtde) = (select min(menor)
+						from (
+							select sum(itv.itvqtde) as menor 
+                            from produto pro
+                            inner join itemvenda itv on itv.itvprocodigo = pro.procodigo
+                            inner join venda ven on ven.vencodigo = itvvencodigo
+							inner join cliente cli on cli.clicodigo = ven.venclicodigo
+							inner join estadocivil est on est.estcodigo = cli.cliestcodigo
+							where est.estdescricao = 'casado' and cli.clisexo = 'f'
+                            group by pro.pronome
+                            ) menor
+);
+
+desc estadocivil;
+
+drop procedure sp_produtos_menos_vendidos_sexo_estcivil;
+delimiter $$
+create procedure sp_produtos_menos_vendidos_sexo_estcivil(p_sexo char(1), p_estcivil varchar(40))
+begin
+	declare aux int;
+    
+    if p_sexo in ('m','f') then 
+		select count(*) into aux
+        from estadocivil
+        where estdescricao = p_estcivil;
+		
+        if aux = 0 then 
+			select concat('Estado civil "', p_estcivil,'" inválido') resposta;
+		else
+			select pronome, prosaldo 
+			from produto
+			inner join itemvenda on  itvprocodigo = procodigo
+			inner join venda on vencodigo = itvvencodigo
+			inner join cliente on clicodigo = venclicodigo
+			inner join estadocivil on estcodigo = cliestcodigo
+			where estdescricao = p_estcivil and clisexo = p_sexo
+			group by pronome, prosaldo
+			having sum(itvqtde) = (select min(menor)
+									from (
+										select sum(itv.itvqtde) as menor 
+										from produto pro
+										inner join itemvenda itv on itv.itvprocodigo = pro.procodigo
+										inner join venda ven on ven.vencodigo = itvvencodigo
+										inner join cliente cli on cli.clicodigo = ven.venclicodigo
+										inner join estadocivil est on est.estcodigo = cli.cliestcodigo
+										where est.estdescricao = p_estcivil and cli.clisexo = p_sexo
+										group by pro.pronome
+										) menor
+			);
+		end if;
+	else
+		select concat('Sexo "', p_sexo, '" inválido') resposta;
+	end if;
+end$$
+delimiter ;
+
+call sp_produtos_menos_vendidos_sexo_estcivil('f', 'casado');
+
 /*
 5) Mostre os nomes dos clientes que tenham gerado mais de uma venda e que tenham os nomes
 iniciando com determinada letra.
 */
 
+-- gerado mais de uma venda por letra
+select clinome, count(vencodigo)
+from cliente
+inner join venda on venclicodigo = clicodigo
+group by clinome
+having  count(vencodigo) > 0 and left(clinome, 1) = 'b';
+
+select clinome from cliente
+where left(clinome, 1) = 'b';
+
+drop procedure sp_cliente_vendas_por_letra;
+delimiter $$
+create procedure sp_cliente_vendas_por_letra(p_inicial char (1))
+begin
+	declare aux1 int default 0;
+    declare aux2 int default 0;
+    
+    select count(clinome) into aux1 from cliente
+	where left(clinome, 1) = p_inicial; 
+    
+    if aux1 = 0 then
+		select 'Nao exite clientes com essa inicial' resposta;
+	else
+		select count(*) into aux2 from (select clinome, count(vencodigo)
+										from cliente
+										inner join venda on venclicodigo = clicodigo
+										group by clinome
+										having  count(vencodigo) > 1 and left(clinome, 1) = p_inicial
+                                        ) teste;
+		if aux2 = 0 then
+			select 'Nao exite clientes com essa inicial que possuam mais de duas vendas' resposta;
+		else
+			select clinome cliente, count(vencodigo) vendas
+			from cliente
+			inner join venda on venclicodigo = clicodigo
+			group by clinome
+			having  count(vencodigo) > 1 and left(clinome, 1) = p_inicial;
+		end if;
+	end if;
+end$$
+delimiter ;
+
+call sp_cliente_vendas_por_letra('i');
+
 /*
 6) Mostre a maior renda de cliente para uma zona.
 */
 
+select clinome, clirendamensal, zonnome
+from cliente
+inner join bairro on baicodigo = clibaicodigo
+inner join zona on zoncodigo = baizoncodigo
+where zonnome = 'oeste';
+
+
+-- maior renda de uma zona
+select distinct(clirendamensal) as 'Maior renda da zona '
+from cliente
+inner join bairro on baicodigo = clibaicodigo
+inner join zona on zoncodigo = baizoncodigo
+where zonnome = 'oeste' and clirendamensal =(select max(cli.clirendamensal)
+										from cliente cli
+                                        inner join bairro bai on bai.baicodigo = cli.clibaicodigo
+										inner join zona zon on zon.zoncodigo = bai.baizoncodigo 
+                                        where zon.zonnome = 'oeste');
+                                     
+desc zona;
+
+drop procedure sp_maior_renda_zona;
+delimiter $$
+create procedure sp_maior_renda_zona(p_zona varchar(15))
+begin
+	declare aux int;
+    
+    select count(*) into aux
+    from zona
+    where zonnome = p_zona;
+    
+    if aux = 0 then
+		select concat('Zona "', p_zona,'" inválida');
+	else
+		select distinct(clirendamensal) as 'Maior renda da zona '
+		from cliente
+		inner join bairro on baicodigo = clibaicodigo
+		inner join zona on zoncodigo = baizoncodigo
+		where zonnome = p_zona and clirendamensal =(select max(cli.clirendamensal)
+												from cliente cli
+												inner join bairro bai on bai.baicodigo = cli.clibaicodigo
+												inner join zona zon on zon.zoncodigo = bai.baizoncodigo 
+												where zon.zonnome = p_zona);
+	end if;
+end$$
+delimiter ;
+
+call sp_maior_renda_zona('oeste');
 /*
 7) Para cada cliente, mostre seu nome e a data da primeira venda realizada.
 */
