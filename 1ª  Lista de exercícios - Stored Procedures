@@ -7,6 +7,74 @@ Defina os parâmetros de forma adequada para cada operação, e valide os campos
 estrangeiras, fazendo os devidos tratamentos e envio de mensagens de erros.
 */
 
+desc cliente;
+
+drop procedure sp_crud_cliente;
+delimiter $$
+create procedure sp_crud_cliente(	p_opcao varchar(10),
+									p_clicodigo int, 
+                                    p_clisexo char(1),
+                                    p_clirendamensal double(6,2),
+                                    p_clinome varchar(70),
+                                    p_clibaicodigo int,
+                                    p_clifone varchar(10),
+                                    p_cliestcodigo int,
+                                    p_clidtcadastro date,
+                                    p_clidtdesativacao date)
+begin
+
+if p_opcao = 'insert' then
+	if not exists (select 'validacao' from bairro where baicodigo = p_clibaicodigo) then
+		select 'O codigo de bairro escolhido nao existe' resposta;
+	elseif not exists (select 'validacao' from estadocivil where estcodigo = p_cliestcodigo) then
+		select 'O codigo de estado civil escolhido nao existe' resposta;
+	elseif p_clisexo not in ('m', 'f') then 
+		select 'O sexo escolhido nao é "m" ou "f"' resposta;
+	else
+		insert into cliente (clisexo, clirendamensal, clinome, clibaicodigo, clifone, cliestcodigo, clidtcadastro, clidtdesativacao)
+		values (p_clisexo, p_clirendamensal, p_clinome, p_clibaicodigo, p_clifone, p_cliestcodigo, p_clidtcadastro, p_clidtdesativacao);
+	end if;
+    
+elseif p_opcao = 'update' then
+	if not exists (select 'validacao' from cliente where clicodigo = p_clicodigo) then
+		select 'O codigo de cliente escolhido nao existe' resposta;
+	elseif not exists (select 'validacao' from bairro where baicodigo = p_clibaicodigo) then
+		select 'O codigo de bairro escolhido nao existe' resposta;
+	elseif not exists (select 'validacao' from estadocivil where estcodigo = p_cliestcodigo) then
+		select 'O codigo de estado civil escolhido nao existe' resposta;
+	elseif p_clisexo not in ('m', 'f') then 
+		select 'O sexo escolhido nao é "m" ou "f"' resposta;
+	else
+		update cliente
+        set clisexo = p_clisexo,
+            clirendamensal = p_clirendamensal,
+            clinome = p_clinome,
+            clibaicodigo = p_clibaicodigo,
+            clifone = p_clifone,
+            cliestcodigo = p_cliestcodigo,
+            clidtcadastro = p_clidtcadastro,
+            clidtdesativacao = p_clidtdesativacao
+		where clicodigo = p_clicodigo; 
+	end if;
+    
+elseif p_opcao = 'delete' then
+	if not exists (select 'validacao' from cliente where clicodigo = p_clicodigo) then
+		select 'O codigo de cliente escolhido nao existe' resposta;
+	elseif exists (select 'validacao' from venda where venclicodigo = p_clicodigo) then 
+		select 'O codigo de cliente possui venda(s) vinculada(s)' resposta;
+	else
+		delete from cliente where clicodigo = p_clicodigo;
+	end if;
+end if;
+end$$
+delimiter ;
+
+-- p_opcao, p_clicodigo, p_sexo, p_clirenda, p_clinome, p_clibaicodigo, p_clifone, p_cliestcodigo, p_clidtcadastro, p_clidtdesativacao 
+call sp_crud_cliente('insert','10','f','10','teste crud','1','1','1','2025-04-04', null);
+
+select * from cliente where clinome = 'teste crud';
+select * from cliente inner join venda on venclicodigo = clicodigo;
+
 /*
 2) Mostre o total de vendas por sexo de clientes e forma de pagamento.
 */
@@ -320,23 +388,212 @@ end$$
 delimiter ;
 
 call sp_maior_renda_zona('oeste');
+
 /*
 7) Para cada cliente, mostre seu nome e a data da primeira venda realizada.
 */
+
+select * from venda
+right join cliente on clicodigo = venclicodigo;
+
+select clinome, vendata 
+from cliente
+inner join venda on venclicodigo = clicodigo;
+
+-- primeira venda por cliente
+select clinome, min(vendata)
+from cliente
+inner join venda on venclicodigo = clicodigo
+group by clinome;
+
+select count(*)
+from cliente
+where clinome like 'EDMAR%';
+
+desc cliente;
+
+drop procedure sp_primeira_venda_por_cliente;
+delimiter $$
+create procedure sp_primeira_venda_por_cliente(p_nome varchar(70))
+begin
+	declare aux int;
+    declare aux1 int;
+    
+    select count(*) into aux 
+    from cliente
+    where clinome like concat(p_nome, '%');
+    
+    if aux = 0 then
+		select 'Nao possui clientes com esse nome' resposta;
+	else
+		select count(*) into aux1 
+		from cliente
+        inner join venda on venclicodigo = clicodigo
+		where clinome like concat(p_nome, '%');
+        
+        if aux1 = 0 then 
+			select 'O cliente escolhido nao gerou vendas' resposta;
+		else
+			select clinome nome, min(vendata) 'Data primeira venda'
+			from cliente
+			inner join venda on venclicodigo = clicodigo
+			group by clinome
+            having clinome like concat(p_nome, '%');
+		end if;
+	end if;
+end$$
+delimiter ;
+
+call sp_primeira_venda_por_cliente('edmar');
 
 /*
 8) Mostre os nomes e custos dos produtos ativos dos grupos informática ou foto, mostrando em
 primeiro lugar os com maior valor.
 */
 
+select * from grupoproduto;
+
+select * 
+from produto
+inner join grupoproduto on grpcodigo = progrpcodigo
+where proativo = '1' && grpdescricao = 'foto'
+or proativo = '1' && grpdescricao = 'informatica';
+
+desc grupoproduto;
+
+drop procedure sp_produtos_ativos_por_grupo;
+delimiter $$
+create procedure sp_produtos_ativos_por_grupo(p_grupo varchar(40))
+begin
+	declare aux int;
+    
+    select count(*) into aux 
+    from grupoproduto
+    where grpdescricao = p_grupo;
+    
+    if aux = 0 then 
+		select concat('O grupo "', p_grupo, '" é inválido') resposta;
+	else
+		if p_grupo not in ('informatica', 'foto') then
+			select 'O grupo informado nao é "FOTO" ou "INFORMATICA"' resposta;
+		else
+			select pronome produto, proativo, procusto custo 
+			from produto
+            
+			inner join grupoproduto on grpcodigo = progrpcodigo
+            
+			where proativo = '1' and grpdescricao = p_grupo
+            order by procusto desc;
+        end if;
+    end if;
+end$$
+delimiter ;
+
+call sp_produtos_ativos_por_grupo('MOVEIS');
+
 /*
 9) Mostre os nomes dos funcionários não demitidos que venderam produtos para clientes da zona leste
 ou oeste.
 */
+
+select distinct(funnome) 
+from funcionario
+inner join venda on venfuncodigo = funcodigo
+inner join cliente on clicodigo = venclicodigo
+inner join bairro on baicodigo = clibaicodigo
+inner join zona on zoncodigo = baizoncodigo
+where zonnome = 'leste' and fundtdem is null;
+
+desc zona;
+
+drop procedure sp_funcionarios_venderam_clientes_zona;
+delimiter $$
+create procedure sp_funcionarios_venderam_clientes_zona(p_zona varchar(15))
+begin
+	declare aux int;
+    
+    select count(*) into aux 
+    from zona
+    where zonnome = p_zona;
+    
+    if aux = 0 then 
+		select concat('a zona "', p_zona, '" é inválida') resposta;
+	else
+		if p_zona not in ('leste', 'oeste') then
+			select 'A zona informada nao é "LESTE" ou "OESTE"' resposta;
+		else
+			select distinct(funnome) funcionario 
+			from funcionario
+			inner join venda on venfuncodigo = funcodigo
+			inner join cliente on clicodigo = venclicodigo
+			inner join bairro on baicodigo = clibaicodigo
+			inner join zona on zoncodigo = baizoncodigo
+			where zonnome = p_zona and fundtdem is null
+            order by funnome asc;
+        end if;
+    end if;
+end$$
+delimiter ;
+
+call sp_funcionarios_venderam_clientes_zona('norte');
 
 /*
 10) Mostre quantos produtos dos grupos "informática" e "eletroeletrônico" foram vendidos para
 clientes do sexo masculino, casadas ou divorciadas e da zona norte;
 */
 
+select * from grupoproduto;
 
+select grpdescricao, sum(itvqtde) 'quantidade vendida'
+from produto
+inner join grupoproduto on grpcodigo = progrpcodigo
+inner join itemvenda on itvprocodigo = procodigo
+inner join venda on vencodigo = itvvencodigo
+inner join cliente on clicodigo = venclicodigo
+inner join estadocivil on estcodigo = cliestcodigo
+inner join bairro on baicodigo = clibaicodigo
+inner join zona on zoncodigo = baizoncodigo
+where grpdescricao in ('ELETRO-ELETRONICOS', 'informatica')
+and clisexo = 'm'
+and estdescricao in ('casado','divorciado')
+and zonnome = 'norte'
+group by grpdescricao;
+
+desc grupoproduto;
+
+drop procedure sp_quantidade_produtos_grupo_vendidos_sexo_estcivil_zona;
+delimiter $$
+create procedure sp_quantidade_produtos_grupo_vendidos_sexo_estcivil_zona(p_grupo varchar(40))
+begin
+	declare aux int;
+    
+    select count(*) into aux 
+    from grupoproduto
+    where grpdescricao = p_grupo;
+    
+    if aux = 0 then
+		select concat('Grupo "', p_grupo, '" invalido') resposta;
+	else
+		if p_grupo not in ('ELETRO-ELETRONICOS', 'informatica') then
+			select 'O grupo selecionado nao é "ELETRO-ELETRONICOS" ou "informatica"' resposta;
+		else 
+			select grpdescricao, sum(itvqtde) 'quantidade vendida'
+			from produto
+			inner join grupoproduto on grpcodigo = progrpcodigo
+			inner join itemvenda on itvprocodigo = procodigo
+			inner join venda on vencodigo = itvvencodigo
+			inner join cliente on clicodigo = venclicodigo
+			inner join estadocivil on estcodigo = cliestcodigo
+			inner join bairro on baicodigo = clibaicodigo
+			inner join zona on zoncodigo = baizoncodigo
+			where grpdescricao = p_grupo
+			and clisexo = 'm'
+			and estdescricao in ('casado','divorciado')
+			and zonnome = 'norte'
+			group by grpdescricao;
+		end if;
+	end if;
+end$$
+delimiter 
+
+call sp_quantidade_produtos_grupo_vendidos_sexo_estcivil_zona('informatica');
