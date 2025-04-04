@@ -1,0 +1,104 @@
+select distinct(proext.pronome) produto, venext.vendata 'data'
+from produto proext
+inner join itemvenda itvext on itvprocodigo = proext.procodigo
+inner join venda venext on venext.vencodigo = itvext.itvvencodigo
+where venext.vendata = (	select min(vendata)
+							from venda venint
+                            inner join itemvenda itvint on itvint.itvvencodigo = venint.vencodigo
+                            inner join produto proint on proint.procodigo = itvint.itvprocodigo
+                            where proint.procodigo = proext.procodigo)
+order by proext.pronome;
+
+drop procedure sp_extrai_caracteres;
+delimiter $$ 
+create procedure sp_extrai_caracteres(p_texto varchar(255))
+begin
+
+	declare v_count tinyint default 1;
+    declare v_tam tinyint unsigned default length(p_texto);
+    
+    while v_count <= v_tam do
+		select substring(p_texto,v_count,1);
+		set v_count = v_count + 1;
+	end while;
+    
+    /*
+    repeat
+		select v_count;
+		set v_count = v_count + 1;
+	until v_cont > p_total
+    end repeat;
+    */
+end$$
+delimiter ;
+
+call sp_contagem(5);
+
+
+drop procedure sp_vogais_texto;
+delimiter $$ 
+create procedure sp_vogais_texto(p_texto varchar(255))
+begin
+
+	declare v_count tinyint default 1;
+    declare v_tam tinyint unsigned default length(p_texto);
+	declare v_vogais varchar(255) default '';
+    declare v_aux varchar(255) default '';
+    
+    while v_count <= v_tam do
+        if ascii(substring(p_texto,v_count,1)) in (65,69,73,79,85,97,101,105,111,117) then
+			set v_aux = concat(v_aux,substring(p_texto,v_count,1));
+		end if;
+        set v_count = v_count + 1;
+	end while;
+    select v_aux;
+end$$
+delimiter ;
+
+call sp_vogais_texto('mArcusei');
+
+drop procedure sp_texto_carcteres;
+delimiter $$ 
+create procedure sp_texto_carcteres(p_texto varchar(255))
+begin
+
+	declare v_count tinyint default 1;
+    declare v_tam tinyint unsigned default length(p_texto);
+    declare v_aux varchar(255) default '';
+    
+    while v_count <= v_tam do
+        if ascii(substring(p_texto,v_count,1)) between 65 and 122 then
+			if ascii(substring(p_texto,v_count,1)) not between 91 and 97 then
+				set v_aux = concat(v_aux, substring(p_texto,v_count,1));
+			end if;
+		end if;
+        set v_count = v_count + 1;
+	end while;
+    select v_aux;
+end$$
+delimiter ;
+
+call sp_texto_carcteres('mAr12321321321cusei'); 
+
+drop procedure sp_soma;
+delimiter $$ 
+create procedure sp_soma(p_numero varchar(255))
+begin
+
+	declare v_count tinyint default 1;
+    declare v_tam tinyint unsigned default length(p_numero);
+    declare v_aux varchar(255) default '';
+    declare v_num int default 0;
+    declare v_soma int default 0;
+    
+    
+    while v_count <= v_tam do
+		set v_num = convert(substring(p_numero,v_count,1), int);
+        set v_count = v_count + 2;
+        set v_soma = v_soma + v_num;
+	end while;
+    select v_soma;
+end$$
+delimiter ;
+
+call sp_soma('1-2-3'); 
