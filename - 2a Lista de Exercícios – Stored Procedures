@@ -1,0 +1,103 @@
+/*
+Marcus Vinicius Soares Correia
+*/
+
+/*
+2a Lista de Exercícios – Stored Procedures
+*/
+
+
+/*
+1) Receber 2 códigos de clientes (parâmetros), contar o número de consoantes dos respectivos
+clientes e retornar o nome completo e nome do bairro do cliente que tenha o maior número.
+Validar os 2 códigos, que devem existir e não podem ser iguais. É possível que 2 clientes
+diferentes possuam o mesmo número de consoantes.
+*/
+
+desc cliente;
+desc bairro;
+
+drop procedure sp_cliente_mais_consoante;
+delimiter $$
+create procedure sp_cliente_mais_consoante(p_cliente1 int, p_cliente2 int)
+begin
+	declare v_nome1 varchar(70);
+    declare v_nome2 varchar(70);
+    declare v_bairro1 varchar(30);
+    declare v_bairro2 varchar(30);
+    declare v_consoantes1 int default 0;
+    declare v_consoantes2 int default 0;
+    declare v_tamanho int default 0;
+	declare v_count int default 1;
+    declare v_letra char(1);
+    
+    if p_cliente1 = p_cliente2 then
+		select 'Os codigos informados sao iguais' resposta;
+	elseif not exists (select 'validacao' from cliente where clicodigo = p_cliente1) then
+        if not exists (select 'validacao' from cliente where clicodigo = p_cliente2) then
+			select 'Ambos os codigos de cliente nao existem' resposta;
+		else	
+			select 'O codigo de cliente 1 nao existe' resposta;
+		end if;
+	elseif not exists (select 'validacao' from cliente where clicodigo = p_cliente2) then
+		select 'O codigo de cliente 2 nao existe' resposta;
+	else
+		select clinome, bainome into v_nome1, v_bairro1
+		from cliente
+		inner join bairro on clibaicodigo = baicodigo
+		where clicodigo = p_cliente1;
+		
+		select clinome, bainome into v_nome2, v_bairro2
+		from cliente
+		inner join bairro on clibaicodigo = baicodigo
+		where clicodigo = p_cliente2;
+		
+		set v_tamanho = length(v_nome1);
+		while v_count <= v_tamanho do
+			set v_letra = substring(v_nome1, v_count, 1);
+			if v_letra not in ('A','E','I','O','U','a','e','i','o','u',' ') then
+				set v_consoantes1 = v_consoantes1 + 1;
+			end if;
+			set v_count = v_count + 1;
+		end while;
+		
+		set v_count = 1;
+		set v_tamanho = length(v_nome2);
+		while v_count <= v_tamanho do
+			set v_letra = substring(v_nome2, v_count, 1);
+			if v_letra not in ('A','E','I','O','U','a','e','i','o','u',' ') then
+				set v_consoantes2 = v_consoantes2 + 1;
+			end if;
+			set v_count = v_count + 1;
+		end while;
+		
+		if v_consoantes1 > v_consoantes2 then
+			select v_nome1 nome, v_bairro1 bairro;
+		elseif v_consoantes1 < v_consoantes2 then
+			select v_nome2 nome, v_bairro2 bairro;
+		else 
+			select clinome nome, bainome bairro
+			from cliente
+			inner join bairro on clibaicodigo = baicodigo
+			where clicodigo in (p_cliente1, p_cliente2);
+		end if;
+	end if;
+    
+end$$
+delimiter ;
+
+call sp_cliente_mais_consoante(610, 609);
+
+/*
+2) Inverter uma string qualquer passada como parâmetro.
+Exemplo: call sp_inverte_string(‘Banco de Dados’)
+resulta em: sodaD ed ocnaB
+*/
+
+
+/*
+3) Detectar que em uma string passada como parâmetro, existem repetições de caracteres, e nesse
+caso, retornar somente 1 deles (eliminar repetição).
+Exemplo: call sp_elimina_repeticoes(‘BBaannco de Daadoss’)
+resulta em: Banco de Dados
+*/
