@@ -3,9 +3,8 @@ Marcus Vinicius Soares Correia
 */
 
 /*
-2a Lista de Exercícios – Stored Procedures
+2ª Lista de Exercícios – Stored Procedures
 */
-
 
 /*
 1) Receber 2 códigos de clientes (parâmetros), contar o número de consoantes dos respectivos
@@ -95,9 +94,57 @@ resulta em: sodaD ed ocnaB
 */
 
 
+drop procedure sp_inverte_string;
+delimiter $$
+create procedure sp_inverte_string(texto varchar(255))
+begin
+	declare v_count int default 0;
+    declare v_inverso char(255) default ' ';
+    
+    set v_count = length(texto);
+    
+    while v_count > 0 do
+		set v_inverso = concat(v_inverso, substring(texto, v_count, 1));
+		if substring(texto, v_count, 1) = ' ' then
+			set v_inverso = concat(v_inverso, ' ', substring(texto, v_count - 1, 1));
+            set v_count = v_count - 1;
+		end if;
+        set v_count = v_count - 1;
+	end while;
+    select v_inverso 'texto invertido';
+end $$
+delimiter ;
+
+call sp_inverte_string('marcus CO rreia');
+
 /*
 3) Detectar que em uma string passada como parâmetro, existem repetições de caracteres, e nesse
 caso, retornar somente 1 deles (eliminar repetição).
 Exemplo: call sp_elimina_repeticoes(‘BBaannco de Daadoss’)
 resulta em: Banco de Dados
 */
+
+drop procedure sp_elimina_repeticoes;
+delimiter $$
+create procedure sp_elimina_repeticoes(texto varchar(255))
+begin
+	declare v_repeticao char(255) default ' ';
+	declare v_tamanho int default 0;
+    declare v_count int default 1;
+    
+    set v_tamanho = length(texto);
+	
+    while v_count <= v_tamanho do
+		if substring(texto, v_count, 1) = ' ' then
+			set v_repeticao = concat(v_repeticao,' ',substring(texto, v_count + 1, 1));
+		elseif substring(texto, v_count, 1) != substring(texto, v_count + 1, 1)
+        and substring(v_repeticao, length(v_repeticao), 1) != substring(texto, v_count, 1)  then
+            set v_repeticao = concat(v_repeticao, substring(texto, v_count, 1));
+		end if;
+        set v_count = v_count + 1;
+	end while;
+    select v_repeticao as 'texto sem repeticao';
+end $$
+delimiter ;
+
+call sp_elimina_repeticoes('marrrccuuuuuuss');
