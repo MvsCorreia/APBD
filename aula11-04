@@ -1,0 +1,118 @@
+use bd2025;
+delimiter $$
+create function f_operecoes(p_1 int, p_2 int, p_opcao char(1)) returns int
+begin
+	if p_opcao = '+' then
+		return (p_1 + p_2);
+	end if;
+end$$
+delimiter ;
+
+/*
+1) meu_left()
+*/
+
+delimiter $$
+create function f_meu_left(p_texto char(255), p_tamanho int) returns char(255)
+begin
+	return substring(p_texto, 1, p_tamanho);
+end$$
+delimiter ;
+
+select f_meu_left('marcus',3) 'left';
+
+/*
+2) meu_locate
+*/
+
+use bd2025;
+
+drop function f_my_locate;
+delimiter $$
+create function f_my_locate(p_caractere char(1), p_texto char(255)) returns char(255)
+begin
+	declare v_count int default 1;
+    declare v_tam int default length(p_texto);
+    declare v_letra char(1) default ' ';
+    declare v_locate char(255) default '';
+    declare v_aux char(255) default '';
+    
+    while v_count <= v_tam do
+		set v_letra = substring(p_texto, v_count, 1);
+        if p_caractere = v_letra then
+			set v_aux = convert(v_count, char);
+			set v_locate = concat(v_locate, ',',v_aux);
+		else 
+			return 0;
+		end if;
+        set v_count = v_count + 1;
+	end while;
+	return substring(v_locate,2,length(v_locate));
+end$$
+delimiter ;
+
+select f_my_locate('x','banco de dados') 'locate';
+select locate('x','banco de dados');
+
+
+/*
+-- -- -- 
+TRIGGERS
+-- -- -- 
+*/
+
+select * from bairro;
+select * from cliente;
+
+select baicodigo,bainome from cliente
+inner join bairro on baicodigo = clibaicodigo
+where clicodigo = 2;
+
+show triggers;
+
+drop trigger tg_atualiza_bairro_cliente;
+delimiter $$
+create trigger tg_atualiza_bairro_cliente after update on cliente
+for each row
+begin
+	if new.clibaicodigo != old.clibaicodigo then
+		update bairro set baiqtdepessoas = baiqtdepessoas + 1
+		where baicodigo = new.clibaicodigo;
+		
+		update bairro set baiqtdepessoas = baiqtdepessoas - 1
+		where baicodigo = old.clibaicodigo;
+	end if;
+end$$
+delimiter ;
+
+drop trigger tg_insere_venda;
+delimiter $$
+create trigger tg_insere_venda after insert on itemvenda
+for each row
+begin
+	update produto set prosaldo = prosaldo - new.itvqtde
+	where procodigo = new.itvprocodigo;
+end$$
+delimiter ;
+
+insert into venda (vencodigo, vendata,venfilcodigo, venclicodigo, venfuncodigo,venfpcodigo)
+values (112,current_date(), 1, 1, 2, 1);
+insert into itemvenda (itvvencodigo,itvprocodigo, itvqtde)
+values (112,1, 5);
+
+
+
+
+drop trigger tg_monitora_preco;
+delimiter $$
+create trigger tg_monitora_preco before insert on produto
+for each row
+begin
+	if new.procusto >= new.propreco then
+    signal sqlstate '85555' set message_text = 'Erro! Custo maior ou igual ao preco';
+	end if;
+end$$
+delimiter ;
+
+insert into produto
+values (26, 'iphone 16 pro max', 5000, 4000,1,1,10,'11');
