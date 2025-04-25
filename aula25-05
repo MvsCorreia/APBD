@@ -1,0 +1,277 @@
+/*  
+3ª Lista de exercícios - Stored procedures e Functions
+*/ 
+
+/*
+Marcus Vinicius Soares Correia
+*/
+
+/*
+1. Crie uma stored procedure que possibilite a inserção de funcionários, validando todos os
+valores passados nos campos referentes às chaves estrangeiras funbaicodigo e funestcodigo,
+e em caso de erro, retorne para o usuário uma mensagem adequada. Os códigos de validação
+não devem estar na stored procedure principal. Devem ser utilizadas outras stored procedures
+ou functions que retornem o conteúdo necessário.
+*/
+use bd2025;
+
+drop procedure sp_valida_bairro;
+delimiter $$
+create procedure sp_valida_bairro(p_bairro int)
+begin
+	if p_bairro not in(select baicodigo from bairro) then 
+		signal sqlstate '20250' set message_text = 'Erro! Codigo de bairro invalido';
+	end if;
+end$$
+delimiter ;
+call sp_valida_bairro();
+
+drop procedure sp_valida_estcivil;
+delimiter $$
+create procedure sp_valida_estcivil(p_estcivil int)
+begin
+	if p_estcivil not in(select estcodigo from estadocivil) then 
+		signal sqlstate '20251' set message_text = 'Erro! Codigo de estado civil invalido';
+	end if;
+end$$
+delimiter ;
+call sp_valida_estcivil();
+
+/*
+drop procedure sp_valida_gerente;
+delimiter $$
+create procedure sp_valida_gerente(p_codgerente int)
+begin
+	if p_codgerente not in(select distinct(funcodgerente) from funcionario) then 
+		signal sqlstate '20252' set message_text = 'Erro! Codigo de gerente invalido';
+	end if;
+end$$
+delimiter ;
+call sp_valida_gerente();
+*/
+
+desc funcionario;
+drop procedure sp_insere_funcionario;
+delimiter $$
+create procedure sp_insere_funcionario( p_funcodigo int(11),
+										p_funnome varchar(50),
+										p_funsalario double(6,2),
+                                        p_funbaicodigo int(11),
+                                        p_funcodgerente int(11),
+                                        p_fundtdem date,
+                                        p_funestcodigo int(11),
+                                        p_funsenha varchar(20),
+                                        p_funlogin varchar(30),
+                                        p_fundtnascto date)
+begin
+	call sp_valida_bairro(p_funbaicodigo);
+    call sp_valida_estcivil(p_funestcodigo);
+    /*call sp_valida_gerente(p_funcodgerente);*/
+    
+    insert into funcionario
+    values (p_funcodigo, p_funnome, p_funsalario, p_funbaicodigo, p_funcodgerente, p_fundtdem, p_funestcodigo, p_funsenha, p_funlogin, p_fundtnascto);
+end$$
+delimiter ;
+call sp_insere_funcionario(31,'vinicius soares',1500,1,1,null,2,'123','marcus','2002-05-16');
+select * from funcionario ;
+
+/*
+2. Crie uma stored procedure que recebe em um único conjunto de parâmetros, dados de venda
+e de itemvenda, e insira primeiro em venda, e após em itemvenda, controlando as restrições
+tanto de chave primária (registros duplicados) como de chaves estrangeiras (integridade
+referencial), e ainda, se o produto a ser inserido tem o saldo maior ou igual à quantidade
+indicada para a venda. Todas as validações devem ser feitas utilizando funções criadas para
+cada caso.
+*/
+
+
+
+
+
+
+
+
+
+
+
+/*6 questao
+
+
+Implemente uma função que retorne o número de ocorrências de determinado caractere em
+qualquer string. Funções permitidas: substring(), length() e concat().
+
+*/
+
+
+delimiter $$
+create function conta_caracteres(p_texto varchar(255), f_car char(10)) returns int
+begin
+	declare v_cont int default 0;
+    declare v_cont_car int default 0;
+    declare v_tam int default 0;
+    declare v_car char default  ' ';
+    
+    set v_tam = length(p_texto);
+    set v_car = f_car;
+    
+    while v_cont <= v_tam do
+		if substring(p_texto, v_cont, 1) = v_car then
+			set v_cont_car = v_cont_car + 1;
+        end if;
+        set v_cont = v_cont + 1;
+    end while;
+    return v_cont_car;
+    
+end$$
+
+delimiter ;
+
+drop function conta_caracteres;
+
+select conta_caracteres('paralelepipedo' , 'e');
+
+/*
+3. Criar uma função que, ao receber 2 parâmetros, o primeiro sendo um texto e o segundo uma
+letra “V” para vogal e “C” para consoante. Dependendo do segundo parâmetro, deverá extrair
+somente as VOGAIS ou CONSOANTES de qualquer string, retornando de uma vez todas os
+respectivos caracteres indicados, separados por “-“. Exemplo:
+Select f_extrair_caracteres(“BANCO DE DADOS”, “V”);
+
+Resultado: A-O-E-A-O
+
+Select f_extrair_caracteres(“BANCO DE DADOS”, “C”);
+
+Resultado: B-N-C-D-D-D-S
+*/
+
+drop function f_extrair_caractere;
+delimiter $$
+create function f_extrair_caractere(p_texto varchar(255), p_opcao char(1)) returns varchar(255)
+begin
+	declare v_count int default 1;
+    declare v_extracao varchar(255) default '';
+    
+    if p_opcao = 'V' then
+		while v_count <= length(p_texto) do
+			if substring(p_texto, v_count, 1) in ('A','a','E','e','I','i','O','o','U','u') then 
+				set v_extracao = concat(v_extracao, '-', substring(p_texto, v_count, 1));
+			end if;
+            set v_count = v_count + 1;
+		end while;
+		return substring(v_extracao, 2);
+	elseif p_opcao = 'C' then
+		while v_count <= length(p_texto) do
+			if substring(p_texto, v_count, 1) not in ('A','a','E','e','I','i','O','o','U','u') then 
+				set v_extracao = concat(v_extracao, '-', substring(p_texto, v_count, 1));
+			end if;
+            set v_count = v_count + 1;
+		end while;
+		return substring(v_extracao, 2);
+	else
+		return 'erro';
+    end if;
+    
+end$$
+delimiter ;
+
+select f_extrair_caractere('marcus','V');
+
+
+/*
+7 questao
+
+Implemente uma função de limpeza de caracteres inválidos. Deve procurar pelos seguintes
+caracteres: ( ) / \ + $ % - @ _ ! * e caso encontre, simplesmente os retire do texto.
+Exemplo: Select f_limpa_str(“Pro%gra!mação e_m ban/co-d$e@da)do(s]=\\)
+Resultado: Programação em banco de dados
+
+
+*/
+
+
+delimiter $$
+create function f_limpa_str(p_texto varchar(255)) returns char(255)
+begin
+	declare v_cont int default 1;
+    declare v_tam int default length(p_texto);
+    declare texto_final varchar(255) default '';
+    
+    while v_cont<=v_tam do 
+		if ascii(substring(p_texto, v_cont,1)) not in (40, 41, 47, 92, 43, 36, 45, 37, 64, 95, 33, 42) then
+			set texto_final = concat(texto_final, substring(p_texto, v_cont, 1));
+		end if;
+        set v_cont = v_cont +1;
+    end while;
+    
+    return texto_final;
+ 
+end$$
+
+delimiter ;
+
+drop function f_limpa_str;
+
+select f_limpa_str("Pro%gra!mação e_m ban/co-d$e@da)do(s]=");
+
+
+/*
+4. Implemente a função f_meu_right(). As únicas funções permitidas no código são substring(),
+length() e Concat().
+*/
+
+drop function f_meu_right;
+delimiter $$
+create function f_meu_right(p_texto varchar(255), p_tamanho int) returns varchar(255)
+begin
+	declare v_count int default length(p_texto) - p_tamanho + 1;
+    declare v_right varchar(255) default '';
+    
+	while v_count <= length(p_texto) do
+		set v_right = concat(v_right, substring(p_texto,v_count,1));
+        set v_count = v_count + 1;
+	end while;
+	return v_right;
+end$$
+delimiter ;
+
+select f_meu_right('right',2);
+
+
+
+/*
+8ª questao
+*/
+
+delimiter $$
+create function f_capital(p_texto varchar(255)) returns varchar(255)
+begin
+	declare v_tam int default length(p_texto);
+    declare v_cont int default 2;
+    declare texto_final varchar(255) default '';
+    
+    if ascii(substring(p_texto,1, 1)) between 97 and 122 then
+			set texto_final = concat(texto_final, chr(ascii(substring(p_texto, 1, 1)) - 32));
+	else 
+		set texto_final = concat(texto_final, substring(p_texto,1, 1));
+    end if;
+    
+    while v_cont<=v_tam do 
+        if substring(p_texto, v_cont-1, 1) = ' ' and ascii(substring(p_texto, v_cont, 1)) between 97 and 122 then
+			set texto_final = concat(texto_final, chr(ascii(substring(p_texto, v_cont, 1)) - 32));
+        elseif substring(p_texto, v_cont-1, 1) != ' ' and ascii(substring(p_texto, v_cont, 1)) between 65 and 90 then
+			set texto_final = concat(texto_final, chr(ascii(substring(p_texto, v_cont, 1)) + 32));
+		else 
+			set texto_final = concat(texto_final, substring(p_texto, v_cont, 1));
+		end if;
+        set v_cont = v_cont + 1;
+    end while;
+	return texto_final;
+end$$
+
+delimiter ;
+
+select f_capital('Teste de sTrInG');
+
+drop function f_capital;
+
+
